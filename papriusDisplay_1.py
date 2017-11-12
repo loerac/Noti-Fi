@@ -37,21 +37,11 @@ SIZE=27
 hatdir='/proc/device-tree/hat'
 
 class Display:
-    # Connect to the database with the username, password, and database name
     def __init__(self):
-        self.m=mariadb.connect(user='capstone',passwd='2017capstoneProject',db='display')
+        # Connect to the database with the username, password, and database name
+        self.m=mariadb.connect(user='',passwd='',db='')
         self.c=self.m.cursor()
         self.screen=Screen()
-
-    # Checking if someone is at the door
-    def door_input(self):
-        self.m.commit()
-        self.c.execute("SELECT data FROM item WHERE door=1")
-        for d in self.c:
-            t = d.split('')
-            #self.screen.updateScreen("Hello",self.output(str(d)))
-            return True
-        return False
    
     # Send data to the door and display it
     def update(self):
@@ -63,6 +53,7 @@ class Display:
             self.screen.updateScreen(n,self.output(d))
             time.sleep(3)
     
+    # Make the data from the message fit the screen
     def output(self,d):
         t=''
         s=''
@@ -101,6 +92,7 @@ class Display:
     def getSW3(self):
         return self.screen.getSW3()
     
+# The class for the Paprius eInk Display
 class Screen:    
     def __init__(self):
         # Check EPD_SIZE is defined
@@ -110,6 +102,7 @@ class Screen:
         if EPD_SIZE==0.0:
             print("Please select your screen size by running 'papirus-config'.")
 
+        # Buttons configuration
         self.sw1=21
         self.sw2=16
         self.sw3=20
@@ -199,11 +192,9 @@ if __name__=="__main__":
     sw3=disp.getSW3()  # Exit
     cont=False
 
-    welcome="================================\n\tWelcome to Noti-fi\n================================"
-    print(welcome)
-    #print("================================")
-    #print("       Welcome to Noti-Fi")
-    #print("================================")
+    print("================================")
+    print("       Welcome to Noti-Fi")
+    print("================================")
 
 
     while GPIO.input(sw3)!=False:
@@ -213,11 +204,6 @@ if __name__=="__main__":
         else:
             cont=False
         disp.displayTime()
-
-    #while 1:
-    #    while disp.door_input():
-    #        disp.update()
-    #    disp.displayTime()
 
     disp.exit()
     print("Bye")
