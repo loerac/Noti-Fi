@@ -1,2 +1,2 @@
 # Noti-Fi
-Doorbell system using Raspberry Pi Zero W w/ XMC4700
+Doorbell system using Raspberry Pi Zero W and Arduino Uno
