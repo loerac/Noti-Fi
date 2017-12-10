@@ -10,7 +10,11 @@
   a knock counter to eliminate unnecessary notification to the user. The serial monitor
   and any printed statements are for debugging/troubleshooting purposes and can be
   removed for the final implementation.
+
+  Benjamin Rohloff
+  Made modifications to code to implement MQTT
 */
+
 
 #include <Wire.h>             // This is a standard library in the Arduino IDE.    
 #include <Adafruit_Sensor.h>  // The other two libraries are open source and 
@@ -23,17 +27,36 @@
 #include <Adafruit_WINC1500.h>
 
 // Pins to use with the WINC1500
-#define CS  8
-#define IRQ 7
-#define RST 4
+#define CS  10
+#define IRQ 9
+#define RST 8
 
 // Setup wifi with the pins
 Adafruit_WINC1500 WiFi(CS, IRQ, RST);
 
 // Network configuration
-char ssid[] = "Goonies";
-char pass[] = "default_pwd";
+char ssid[] = "dd-wrt";
+char pass[] = "FX123456";
+int status = WL_IDLE_STATUS;
 
+//Adafruit.io Setup
+#define AIO_SERVER      "192.168.1.126"
+#define AIO_SERVERPORT  1883
+#define AIO_USERNAME    ""
+#define AIO_KEY         ""
+
+//Set up the wifi client
+Adafruit_WINC1500Client client;
+
+Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
+
+#define halt(s) { Serial.println(F( s )); while(1);  }
+
+Adafruit_MQTT_Publish wifiData = Adafruit_MQTT_Publish(&mqtt, "Notifi/board-to-app");
+
+#define LEDPIN 13
+
+//Acclerometer
 Adafruit_LSM303 lsm;          // Instantiate the accelerometer.
 
 // Initialize all variables.
@@ -62,7 +85,7 @@ void setup()
                               // is opened. It is used only for debugging purposes.
 #endif
 	Serial.begin(9600);
- pinMode(bellPin, INPUT);
+  pinMode(bellPin, INPUT);
   
 	// Try to initialise and warn if we couldn't detect the chip
 	if (!lsm.begin())
@@ -82,6 +105,9 @@ void setup()
 
 void loop() 
 {
+  //setup MQTT
+  MQTT_connect();
+  
   // Set a flag for when the bell is pushed.
   bool bell = false;
 
@@ -121,6 +147,11 @@ void loop()
     Serial.println(knocks);
     if (knocks >= 2){
       Serial.println("Someone is at the door! Send the notification.");
+      if(!wifiData.publish("Someone is at the Door!")) {
+        Serial.println(F("Failed"));
+      } else {
+        Serial.println(F("OK!"));
+      }
       delay(1000);
     }
     /*
@@ -146,8 +177,13 @@ void loop()
   }
 
   if (bell == true){
-    Serial.println("Ding-dong!");    
-    delay(500);
+    Serial.println("Ding-dong!"); 
+    if(!wifiData.publish("Someone is at the Door!")) {
+        Serial.println(F("Failed"));
+      } else {
+        Serial.println(F("OK!"));
+      }   
+    while(bell == true);
   }
 
   // Reset the knock flag.
@@ -155,4 +191,40 @@ void loop()
 
   // Wait.
 	// delay(1);
+}
+
+// Function to connect and reconnect as necessary to the MQTT server.
+// Should be called in the loop function and it will take care if connecting.
+void MQTT_connect() {
+  int8_t ret;
+
+  // attempt to connect to Wifi network:
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
+
+    // wait 10 seconds for connection:
+    uint8_t timeout = 10;
+    while (timeout && (WiFi.status() != WL_CONNECTED)) {
+      timeout--;
+      delay(1000);
+    }
+  }
+  
+  // Stop if already connected.
+  if (mqtt.connected()) {
+    return;
+  }
+
+  Serial.print("Connecting to MQTT... ");
+
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.println(mqtt.connectErrorString(ret));
+       Serial.println("Retrying MQTT connection in 5 seconds...");
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds
+  }
+  Serial.println("MQTT Connected!");
 }
