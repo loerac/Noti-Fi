@@ -71,14 +71,21 @@ class Display:
         data=msg.payload
 
         # Exit program only through linux command line
-        if (data == "exit -n") and (name == "admin"):
+        if (name == "admin")and (data == "exit -n"):
             self.exit()
-
+      
+        # Change the size of the name if greater than 12
         self.nameOut(name)
-        self.screen.updateScreen(name,self.dataOut(data),self.scroll)
+
+        # If the Arduino sends a message, display only once
+        if (name == "House"):
+            self.screen.updateScreen(name,self.dataOut(data),self.scroll)
+        else:
+            # Else display the user data five times
+            self.listStack(name,data,self.scroll)
+            self.run = 5
+            self.displayMessage()
         print(name + ": " + data)
-        self.listStack(name,data,self.scroll)
-        self.run = 5
        
     # Display what is on the list
     def displayMessage(self):
@@ -88,7 +95,6 @@ class Display:
                 self.screen.updateScreen(self.nameList[i],self.dataOut(self.dataList[i]),self.scrollList[i])
                 print(self.nameList[i] + ": " + self.dataList[i])
             self.run -= 1
-            print("RUN:",self.run)
         if not self.run:
             self.nameList = []
             self.dataList = []
@@ -106,7 +112,6 @@ class Display:
   
     # Continually loop to check clients
     def mqttLoop(self):
-        print("LOOP")
         self.mqttc.loop()
 
     # Make the name fit the screen
@@ -204,7 +209,7 @@ class Screen:
 
         if s:
             axis_y = self.dataSize+MAX_DATA_SIZE
-            while axis_y > ((-len(d) * 2) + (len(d)/2)):
+            while axis_y > ((-96 * 2) + (len(d)/2)):
                 self.draw.text((5,axis_y),('%s' %d), fill=self.BLACK, font=self.dataFont)
                 self.displayScreen()
                 if axis_y == self.dataSize+MAX_DATA_SIZE:
