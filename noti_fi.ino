@@ -35,8 +35,16 @@
 Adafruit_WINC1500 WiFi(CS, IRQ, RST);
 
 // Network configuration
+//char ssid[] = "ImTooCheapForAHotspot";
+//char pass[] = "gavinisawesome";
+//char ssid[] = "Too Many Cooks";
+//char pass[] = "0215634363";
+//char ssid[] = "Goonies";
+//char pass[] = "default_pwd";
 char ssid[] = "dd-wrt";
 char pass[] = "FX123456";
+int keyIndex = 0;
+
 int status = WL_IDLE_STATUS;
 
 //Adafruit.io Setup
@@ -52,9 +60,8 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 
 #define halt(s) { Serial.println(F( s )); while(1);  }
 
+Adafruit_MQTT_Publish house = Adafruit_MQTT_Publish(&mqtt, "Notifi/app-to-pi/House");
 Adafruit_MQTT_Publish wifiData = Adafruit_MQTT_Publish(&mqtt, "Notifi/board-to-app");
-
-#define LEDPIN 13
 
 //Acclerometer
 Adafruit_LSM303 lsm;          // Instantiate the accelerometer.
@@ -78,18 +85,14 @@ int knocks = 0;               // This counter keeps track of consecutive knocks 
                               // lowers when another knock is not received within
                               // a certain time frame.
 
-void setup() 
-{
-#ifndef ESP8266
+void setup() {
 	while (!Serial);            // This will pause Zero, Leonardo, etc until serial console
                               // is opened. It is used only for debugging purposes.
-#endif
 	Serial.begin(9600);
   pinMode(bellPin, INPUT);
   
 	// Try to initialise and warn if we couldn't detect the chip
-	if (!lsm.begin())
-	{
+	if (!lsm.begin()) {
 		Serial.println("Oops ... unable to initialize the LSM303. Check your wiring!");
 		while (1);
 	} 
@@ -103,8 +106,7 @@ void setup()
   Serial.println("WINC1500: OK");
 }
 
-void loop() 
-{
+void loop() {
   //setup MQTT
   MQTT_connect();
   
@@ -112,37 +114,28 @@ void loop()
   bool bell = false;
 
   // Read the analog input pin and set bell flag accordingly.
-  if (digitalRead(bellPin) == LOW){
-    bell = true;
-  }
-  else{
-    bell = false;
-  }  
+  bell = (digitalRead(bellPin) == LOW) ? true:false;
   
   // Read the data from the accelerometer.
 	lsm.read();
- 
+  
   // Check new data against old data and set to output if change is greater than sensitivity.
-  if ((int)lsm.accelData.x - lsmOldX > sensitivity | (int)lsm.accelData.x - lsmOldX < (-1*sensitivity))
-  {	  
+  if ((int)lsm.accelData.x - lsmOldX > sensitivity | (int)lsm.accelData.x - lsmOldX < (-1*sensitivity)) {	  
     lsmOldX = lsm.accelData.x;
     knock = true;
   }
-  if ((int)lsm.accelData.y - lsmOldY > sensitivity | (int)lsm.accelData.y - lsmOldY < (-1*sensitivity))
-  {    
+  if ((int)lsm.accelData.y - lsmOldY > sensitivity | (int)lsm.accelData.y - lsmOldY < (-1*sensitivity)) {    
     lsmOldY = lsm.accelData.y;
     knock = true;
   }
-  if ((int)lsm.accelData.z - lsmOldZ > sensitivity | (int)lsm.accelData.z - lsmOldZ < (-1*sensitivity))
-  {
+  if ((int)lsm.accelData.z - lsmOldZ > sensitivity | (int)lsm.accelData.z - lsmOldZ < (-1*sensitivity)) {
     lsmOldZ = lsm.accelData.z;
     knock = true;
   }
 
   // Print out new data if necessary.
-  if (knock == true){
-
-    knocks = knocks + 1;        
+  if (knock == true) {
+    knocks += 1;        
     Serial.print("Number of knocks: ");
     Serial.println(knocks);
     if (knocks >= 2){
@@ -150,21 +143,12 @@ void loop()
       if(!wifiData.publish("Someone is at the Door!")) {
         Serial.println(F("Failed"));
       } else {
+        house.publish("Welcome and enjoy the cold as you wait outside");
         Serial.println(F("OK!"));
       }
       delay(1000);
     }
-    /*
-    Serial.print("X: ");
-    Serial.print(lsmOldX);
-    Serial.print(" ");
-    Serial.print("Y: ");
-    Serial.print(lsmOldY);
-    Serial.print(" ");
-    Serial.print("Z: ");
-    Serial.print(lsmOldZ);
-    Serial.println(" ");
-    */
+    
     delay(200);
     lsm.read();
     lsmOldX = lsm.accelData.x;
@@ -172,25 +156,22 @@ void loop()
     lsmOldZ = lsm.accelData.z;
     delay(100);
   }
-  if (knock == false && knocks > 0){
-    knocks = knocks - 1;
-  }
+  if (knock == false && knocks > 0) knocks -= 1;
 
   if (bell == true){
     Serial.println("Ding-dong!"); 
     if(!wifiData.publish("Someone is at the Door!")) {
         Serial.println(F("Failed"));
       } else {
+        house.publish("Welcome to my house");
         Serial.println(F("OK!"));
       }   
-    while(bell == true);
+    while(bell)
+      bell = (digitalRead(bellPin) == LOW) ? true:false;
   }
 
   // Reset the knock flag.
   knock = false;
-
-  // Wait.
-	// delay(1);
 }
 
 // Function to connect and reconnect as necessary to the MQTT server.
@@ -214,9 +195,7 @@ void MQTT_connect() {
   }
   
   // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
+  if (mqtt.connected()) return;
 
   Serial.print("Connecting to MQTT... ");
 
