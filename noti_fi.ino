@@ -86,7 +86,7 @@ int knocks = 0;               // This counter keeps track of consecutive knocks 
                               // a certain time frame.
 
 void setup() {
-	while (!Serial);            // This will pause Zero, Leonardo, etc until serial console
+//	while (!Serial);            // This will pause Zero, Leonardo, etc until serial console
                               // is opened. It is used only for debugging purposes.
 	Serial.begin(9600);
   pinMode(bellPin, INPUT);
